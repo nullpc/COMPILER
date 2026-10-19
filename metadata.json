@@ -1,0 +1,6 @@
+{
+  "name": "Online Turbo C++ Compiler",
+  "description": "Online Turbo C and C++ Compiler By Maaz Patwekar. Designed for DYPCET and All Students From other Colleges with code save feature, lab report PDF generator, conio.h, and graphics.h.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
