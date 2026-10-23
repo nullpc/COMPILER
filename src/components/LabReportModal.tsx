@@ -62,8 +62,6 @@ export function LabReportModal({
     return 'dypcet';
   });
 
-  // Export Confirmation Dialog Prompt state
-  const [showExportPrompt, setShowExportPrompt] = useState(false);
   const [exportMode, setExportMode] = useState<'download-pdf' | 'browser-print' | 'download-html'>('download-pdf');
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [pdfStatusMessage, setPdfStatusMessage] = useState('');
@@ -127,51 +125,67 @@ export function LabReportModal({
   };
 
   // Trigger export flow prompt
+  // Direct export trigger: executes immediately without any popup dialog appearing over the PDF
   const handleTriggerExport = (mode: 'download-pdf' | 'browser-print' | 'download-html') => {
-    setExportMode(mode);
-    setShowExportPrompt(true);
+    if (mode === 'download-pdf') {
+      generateAndDownloadPdf(template);
+    } else if (mode === 'browser-print') {
+      executeBrowserPrint(template);
+    } else if (mode === 'download-html') {
+      downloadHtmlReport(template);
+    }
   };
 
-  // Perform direct PDF download via html2canvas and jsPDF with clean single/multi-page calculation
+  // Perform clean, mobile-optimized direct PDF download via html2canvas and jsPDF
   const generateAndDownloadPdf = async (chosenTemplate: CollegeTemplate) => {
     handleSelectTemplate(chosenTemplate);
-    setShowExportPrompt(false);
     setIsGeneratingPdf(true);
-    setPdfStatusMessage('Rendering clean student code sheet...');
+    setPdfStatusMessage('Rendering clean A4 student code sheet...');
 
     try {
       // Small pause to allow state updates to reflect in DOM
-      await new Promise(resolve => setTimeout(resolve, 250));
+      await new Promise(resolve => setTimeout(resolve, 200));
 
       const sheet = document.getElementById('lab-report-sheet');
       if (!sheet) {
         throw new Error('Code sheet element not found');
       }
 
-      setPdfStatusMessage('Generating high-resolution canvas...');
-      const scrollHeight = sheet.scrollHeight;
+      setPdfStatusMessage('Capturing high-resolution desktop layout...');
 
+      // Render at fixed 794px width (standard A4 at 96 DPI) with windowWidth: 1024 so mobile browsers render full desktop layout
       const canvas = await html2canvas(sheet, {
-        scale: 2,
+        scale: 1.5, // 1.5x gives ~150 DPI print sharpness without crashing mobile browser RAM
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
-        height: scrollHeight,
-        scrollY: 0,
-        scrollX: 0,
+        windowWidth: 1024,
         onclone: (clonedDoc) => {
           const clonedSheet = clonedDoc.getElementById('lab-report-sheet');
           if (clonedSheet) {
+            clonedSheet.style.width = '794px';
+            clonedSheet.style.minWidth = '794px';
+            clonedSheet.style.maxWidth = '794px';
+            clonedSheet.style.boxSizing = 'border-box';
+            clonedSheet.style.padding = '32px 36px';
             clonedSheet.style.backgroundColor = '#ffffff';
             clonedSheet.style.color = '#000000';
             clonedSheet.style.height = 'auto';
             clonedSheet.style.minHeight = '0px';
             clonedSheet.style.maxHeight = 'none';
             clonedSheet.style.overflow = 'visible';
-            clonedSheet.style.padding = '32px';
+            clonedSheet.style.margin = '0 auto';
+          }
+          if (clonedDoc.body) {
+            clonedDoc.body.style.width = '1024px';
+            clonedDoc.body.style.minWidth = '1024px';
+            clonedDoc.body.style.backgroundColor = '#ffffff';
+            clonedDoc.body.style.overflow = 'visible';
           }
           let parent = clonedSheet?.parentElement;
           while (parent) {
+            parent.style.width = '1024px';
+            parent.style.minWidth = '1024px';
             parent.style.height = 'auto';
             parent.style.maxHeight = 'none';
             parent.style.overflow = 'visible';
@@ -180,65 +194,63 @@ export function LabReportModal({
         }
       });
 
-      setPdfStatusMessage('Compiling crisp A4 PDF...');
+      setPdfStatusMessage('Assembling crisp PDF document...');
 
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
-        format: 'a4'
+        format: 'a4',
+        compress: true
       });
 
       const pdfPageWidth = 210;
       const pdfPageHeight = 297;
-
       const totalWidth = canvas.width;
       const totalHeight = canvas.height;
 
       // In canvas pixels, 1 full A4 page height is:
       const pageHeightInPx = Math.floor(totalWidth * (pdfPageHeight / pdfPageWidth));
 
-      // Single-page check: if entire sheet fits inside 1 A4 page (with 15px buffer)
-      if (totalHeight <= pageHeightInPx + 15) {
-        const pageImgData = canvas.toDataURL('image/jpeg', 0.98);
+      // Single-page check: if entire sheet fits inside 1 A4 page (with 20px tolerance)
+      if (totalHeight <= pageHeightInPx + 20) {
+        const pageImgData = canvas.toDataURL('image/jpeg', 0.92);
         const renderedHeightMm = Math.min(pdfPageHeight, (totalHeight * pdfPageWidth) / totalWidth);
-        pdf.addImage(pageImgData, 'JPEG', 0, 0, pdfPageWidth, renderedHeightMm);
+        pdf.addImage(pageImgData, 'JPEG', 0, 0, pdfPageWidth, renderedHeightMm, undefined, 'FAST');
       } else {
-        // Multi-page slicing for longer code:
+        // Multi-page slicing for longer programs
         let currentY = 0;
         let pageNum = 0;
+        const pageCanvas = document.createElement('canvas');
+        pageCanvas.width = totalWidth;
+        pageCanvas.height = pageHeightInPx;
+        const pageCtx = pageCanvas.getContext('2d');
 
         while (currentY < totalHeight) {
           const remainingHeight = totalHeight - currentY;
-          // Avoid creating a trailing blank page for small whitespace padding
-          if (pageNum > 0 && remainingHeight <= 50) {
+          // Avoid creating an empty trailing page for minor whitespace
+          if (pageNum > 0 && remainingHeight <= 40) {
             break;
           }
 
           const sliceHeight = Math.min(pageHeightInPx, remainingHeight);
 
-          const pageCanvas = document.createElement('canvas');
-          pageCanvas.width = totalWidth;
-          pageCanvas.height = pageHeightInPx;
-          const pageCtx = pageCanvas.getContext('2d');
-
           if (pageCtx) {
             pageCtx.fillStyle = '#ffffff';
-            pageCtx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+            pageCtx.fillRect(0, 0, totalWidth, pageHeightInPx);
             pageCtx.drawImage(
               canvas,
-              0, currentY, totalWidth, sliceHeight, // source rect
-              0, 0, totalWidth, sliceHeight         // destination rect
+              0, currentY, totalWidth, sliceHeight,
+              0, 0, totalWidth, sliceHeight
             );
           }
 
-          const pageImgData = pageCanvas.toDataURL('image/jpeg', 0.95);
+          const pageImgData = pageCanvas.toDataURL('image/jpeg', 0.90);
 
           if (pageNum > 0) {
             pdf.addPage();
           }
 
-          pdf.addImage(pageImgData, 'JPEG', 0, 0, pdfPageWidth, pdfPageHeight);
-
+          pdf.addImage(pageImgData, 'JPEG', 0, 0, pdfPageWidth, pdfPageHeight, undefined, 'FAST');
           currentY += pageHeightInPx;
           pageNum++;
         }
@@ -254,14 +266,48 @@ export function LabReportModal({
       const finalFileName = `${collegePrefix}_${fileBase}_${studentSlug}.pdf`;
 
       setPdfStatusMessage('Downloading PDF...');
-      pdf.save(finalFileName);
+
+      const blob = pdf.output('blob');
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+      // On mobile devices, attempt Web Share API for native viewing/saving if supported
+      let sharedSuccessfully = false;
+      if (isMobile && typeof navigator.share === 'function') {
+        try {
+          const pdfFile = new File([blob], finalFileName, { type: 'application/pdf' });
+          if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+            await navigator.share({
+              files: [pdfFile],
+              title: finalFileName
+            });
+            sharedSuccessfully = true;
+          }
+        } catch (shareErr) {
+          console.log('Mobile share dismissed, using download link:', shareErr);
+        }
+      }
+
+      if (!sharedSuccessfully) {
+        // Direct reliable Blob download link
+        const blobUrl = URL.createObjectURL(blob);
+        const downloadLink = document.createElement('a');
+        downloadLink.href = blobUrl;
+        downloadLink.download = finalFileName;
+        downloadLink.rel = 'noopener';
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        setTimeout(() => {
+          document.body.removeChild(downloadLink);
+          URL.revokeObjectURL(blobUrl);
+        }, 15000);
+      }
     } catch (err: any) {
       console.error('Direct PDF error, falling back to print:', err);
-      setPdfStatusMessage('Starting print/save dialog...');
+      setPdfStatusMessage('Opening print dialog...');
       setTimeout(() => {
         window.print();
         setIsGeneratingPdf(false);
-      }, 800);
+      }, 500);
       return;
     } finally {
       setIsGeneratingPdf(false);
@@ -272,7 +318,6 @@ export function LabReportModal({
   // Download self-contained HTML file
   const downloadHtmlReport = (chosenTemplate: CollegeTemplate) => {
     handleSelectTemplate(chosenTemplate);
-    setShowExportPrompt(false);
 
     const sheet = document.getElementById('lab-report-sheet');
     if (!sheet) return;
@@ -309,7 +354,6 @@ export function LabReportModal({
 
   const executeBrowserPrint = (chosenTemplate: CollegeTemplate) => {
     handleSelectTemplate(chosenTemplate);
-    setShowExportPrompt(false);
     setTimeout(() => {
       window.print();
     }, 150);
@@ -334,7 +378,7 @@ export function LabReportModal({
   const linesOfCode = code.split('\n');
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 print-modal-container overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xs overflow-y-auto p-2 sm:p-6 print-modal-container">
       {/* Generating PDF Loading Overlay */}
       {isGeneratingPdf && (
         <div className="fixed inset-0 z-70 bg-black/85 flex flex-col items-center justify-center p-6 no-print animate-in fade-in">
@@ -351,294 +395,11 @@ export function LabReportModal({
         </div>
       )}
 
-      {/* Export Confirmation Dialog Prompt */}
-      {showExportPrompt && (
-        <div className="fixed inset-0 z-60 bg-black/85 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 no-print animate-in fade-in overflow-y-auto">
-          <div className="max-w-xl w-full bg-[#11141d] border border-neutral-700/80 rounded-2xl p-5 sm:p-6 shadow-2xl space-y-4 my-auto max-h-[92vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-400">
-                  <User size={18} />
-                </div>
-                <div>
-                  <h3 className="font-bold text-white text-sm sm:text-base">Student Code Submission Details</h3>
-                  <p className="text-xs text-neutral-400">Confirm student details and college option before exporting</p>
-                </div>
-              </div>
-              <button 
-                onClick={() => setShowExportPrompt(false)}
-                className="text-neutral-400 hover:text-white p-1 rounded-lg hover:bg-neutral-800 cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* College Option Selector */}
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-neutral-300 flex items-center gap-1.5">
-                <Building2 size={13} className="text-amber-400" />
-                <span>Select College Option:</span>
-              </label>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                {/* 1. DYPCET */}
-                <button
-                  type="button"
-                  onClick={() => handleSelectTemplate('dypcet')}
-                  className={`text-left p-2.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
-                    template === 'dypcet'
-                      ? 'border-amber-400 bg-amber-950/30 text-white shadow-sm ring-1 ring-amber-400/40'
-                      : 'border-neutral-800 bg-neutral-900/60 text-neutral-400 hover:border-neutral-700'
-                  }`}
-                >
-                  <div className="font-bold text-xs text-white">DYPCET Kolhapur</div>
-                  <div className="text-[10px] text-neutral-400 mt-1">D. Y. Patil Autonomous Institute header</div>
-                </button>
-
-                {/* 2. Outside DYPCET */}
-                <button
-                  type="button"
-                  onClick={() => handleSelectTemplate('other')}
-                  className={`text-left p-2.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
-                    template === 'other'
-                      ? 'border-blue-400 bg-blue-950/30 text-white shadow-sm ring-1 ring-blue-400/40'
-                      : 'border-neutral-800 bg-neutral-900/60 text-neutral-400 hover:border-neutral-700'
-                  }`}
-                >
-                  <div className="font-bold text-xs text-white">Outside of DYPCET</div>
-                  <div className="text-[10px] text-neutral-400 mt-1">College Name + Approved by AICTE</div>
-                </button>
-
-                {/* 3. Without College Name */}
-                <button
-                  type="button"
-                  onClick={() => handleSelectTemplate('none')}
-                  className={`text-left p-2.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
-                    template === 'none'
-                      ? 'border-emerald-400 bg-emerald-950/30 text-white shadow-sm ring-1 ring-emerald-400/40'
-                      : 'border-neutral-800 bg-neutral-900/60 text-neutral-400 hover:border-neutral-700'
-                  }`}
-                >
-                  <div className="font-bold text-xs text-white">Without College Name</div>
-                  <div className="text-[10px] text-neutral-400 mt-1">Only Student Name (No college banner)</div>
-                </button>
-              </div>
-
-              {/* If Outside DYPCET: Only College Name input */}
-              {template === 'other' && (
-                <div className="p-3 bg-neutral-950 border border-neutral-800 rounded-xl space-y-1.5 text-xs animate-in fade-in">
-                  <label className="text-[11px] font-semibold text-neutral-300">
-                    College / Institute Name <span className="text-rose-400">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={otherCollegeName}
-                    placeholder="Enter your college / institute name"
-                    onChange={(e) => handleSaveOtherCollegeMeta(e.target.value)}
-                    className="w-full px-2.5 py-1.5 bg-neutral-900 border border-neutral-700 rounded-lg text-white font-medium focus:outline-none focus:border-blue-400"
-                  />
-                  <p className="text-[10px] text-neutral-400 font-mono">
-                    * Displays: <strong className="text-neutral-200">{otherCollegeName || 'College Name'}</strong> with <span className="text-amber-400 font-semibold">Approved by AICTE</span>
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Student Academic Info Form */}
-            <div className="space-y-3 bg-neutral-950/60 border border-neutral-800/80 p-3.5 rounded-xl">
-              <div className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-                <GraduationCap size={14} />
-                <span>{template === 'none' ? 'Student Information' : 'Student Academic Details'}</span>
-              </div>
-
-              {template === 'none' ? (
-                /* Without College Name: ONLY Student Name input as requested */
-                <div className="space-y-1 text-xs">
-                  <label className="text-[11px] font-semibold text-neutral-300">
-                    Student Full Name <span className="text-rose-400">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={studentName}
-                    placeholder="Enter student full name"
-                    onChange={(e) => handleSaveStudentMeta(e.target.value, rollNo, department, yearClass, academicYear)}
-                    className="w-full px-3 py-2 bg-neutral-900 border border-neutral-700 rounded-lg text-white font-medium focus:outline-none focus:border-amber-400"
-                  />
-                  <p className="text-[10px] text-neutral-400">
-                    * For &ldquo;Without College Name&rdquo;, Branch, Roll Number, and Academic Year are excluded; only the student name is printed.
-                  </p>
-                </div>
-              ) : (
-                /* DYPCET & Outside DYPCET: Full Academic Info */
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  {/* Student Full Name */}
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-semibold text-neutral-300">
-                      Student Full Name <span className="text-rose-400">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={studentName}
-                      placeholder="Enter student full name"
-                      onChange={(e) => handleSaveStudentMeta(e.target.value, rollNo, department, yearClass, academicYear)}
-                      className="w-full px-3 py-2 bg-neutral-900 border border-neutral-700 rounded-lg text-white font-medium focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-
-                  {/* Roll Number / PRN */}
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-semibold text-neutral-300">
-                      Roll No. / PRN <span className="text-rose-400">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={rollNo}
-                      placeholder="e.g. 23CSE101"
-                      onChange={(e) => handleSaveStudentMeta(studentName, e.target.value, department, yearClass, academicYear)}
-                      className="w-full px-3 py-2 bg-neutral-900 border border-neutral-700 rounded-lg text-white font-mono font-medium focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-
-                  {/* Class / Year */}
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-semibold text-neutral-300">
-                      Class / Year <span className="text-rose-400">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={yearClass}
-                      placeholder="e.g. S.Y. B.Tech / Final Year"
-                      onChange={(e) => handleSaveStudentMeta(studentName, rollNo, department, e.target.value, academicYear)}
-                      className="w-full px-3 py-2 bg-neutral-900 border border-neutral-700 rounded-lg text-white font-medium focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-
-                  {/* Academic Year */}
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-semibold text-neutral-300">
-                      Academic Year <span className="text-rose-400">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={academicYear}
-                      placeholder="e.g. 2025 - 2026"
-                      onChange={(e) => handleSaveStudentMeta(studentName, rollNo, department, yearClass, e.target.value)}
-                      className="w-full px-3 py-2 bg-neutral-900 border border-neutral-700 rounded-lg text-white font-medium focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-
-                  {/* Branch / Department - EXACTLY the institute branches specified by user */}
-                  <div className="space-y-1 sm:col-span-2">
-                    <label className="text-[11px] font-semibold text-neutral-300">
-                      Branch / Program <span className="text-rose-400">*</span>
-                    </label>
-                    <select
-                      value={department}
-                      onChange={(e) => handleSaveStudentMeta(studentName, rollNo, e.target.value, yearClass, academicYear)}
-                      className="w-full px-3 py-2 bg-neutral-900 border border-neutral-700 rounded-lg text-white font-medium focus:outline-none focus:border-amber-400"
-                    >
-                      <optgroup label="Undergraduate Programs (B.Tech & B.Arch)">
-                        {DYPCET_UG_BRANCHES.map((b) => (
-                          <option key={b} value={b}>{b}</option>
-                        ))}
-                      </optgroup>
-                      <optgroup label="Postgraduate Programs (M.Tech)">
-                        {DYPCET_PG_BRANCHES.map((b) => (
-                          <option key={b} value={b}>{b}</option>
-                        ))}
-                      </optgroup>
-                    </select>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Export Method Selector */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-semibold text-neutral-400">Export Method:</label>
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setExportMode('download-pdf')}
-                  className={`p-2 rounded-lg text-xs font-semibold border flex flex-col items-center gap-1 cursor-pointer transition-colors ${
-                    exportMode === 'download-pdf'
-                      ? 'border-emerald-500 bg-emerald-950/40 text-emerald-300'
-                      : 'border-neutral-800 bg-neutral-950 text-neutral-400 hover:text-white'
-                  }`}
-                >
-                  <Download size={14} />
-                  <span>Download .PDF</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setExportMode('browser-print')}
-                  className={`p-2 rounded-lg text-xs font-semibold border flex flex-col items-center gap-1 cursor-pointer transition-colors ${
-                    exportMode === 'browser-print'
-                      ? 'border-blue-500 bg-blue-950/40 text-blue-300'
-                      : 'border-neutral-800 bg-neutral-950 text-neutral-400 hover:text-white'
-                  }`}
-                >
-                  <Printer size={14} />
-                  <span>Browser Print</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setExportMode('download-html')}
-                  className={`p-2 rounded-lg text-xs font-semibold border flex flex-col items-center gap-1 cursor-pointer transition-colors ${
-                    exportMode === 'download-html'
-                      ? 'border-purple-500 bg-purple-950/40 text-purple-300'
-                      : 'border-neutral-800 bg-neutral-950 text-neutral-400 hover:text-white'
-                  }`}
-                >
-                  <FileCode size={14} />
-                  <span>Offline .HTML</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="pt-2 border-t border-neutral-800 flex items-center justify-between gap-3">
-              <button
-                type="button"
-                onClick={() => setShowExportPrompt(false)}
-                className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-lg text-xs font-medium cursor-pointer"
-              >
-                Cancel
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleExecuteExport(template)}
-                disabled={!studentName.trim() || (template !== 'none' && !rollNo.trim())}
-                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-neutral-950 font-bold rounded-xl text-xs flex items-center gap-2 cursor-pointer shadow-lg shadow-emerald-950/50 transition-all transform active:scale-95"
-              >
-                {exportMode === 'download-pdf' ? (
-                  <>
-                    <Download size={15} />
-                    <span>Download PDF (.pdf)</span>
-                  </>
-                ) : exportMode === 'browser-print' ? (
-                  <>
-                    <Printer size={15} />
-                    <span>Start Browser Print</span>
-                  </>
-                ) : (
-                  <>
-                    <FileCode size={15} />
-                    <span>Download HTML File</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Main Modal Dialog */}
-      <div className="max-w-4xl w-full bg-[#0c0e14] border border-neutral-800 rounded-2xl shadow-2xl flex flex-col max-h-[92vh] print-modal-content overflow-hidden">
+      {/* Main Modal Dialog (Natural document flow - No nested flex-col shrinking or docking) */}
+      <div className="max-w-5xl w-full mx-auto my-3 sm:my-8 bg-[#0c0e14] border border-neutral-800 rounded-2xl shadow-2xl overflow-hidden print-modal-content">
         
-        {/* Top Control Bar (Hidden on print) */}
-        <div className="p-4 border-b border-neutral-800 flex flex-wrap items-center justify-between gap-3 bg-neutral-900/90 text-neutral-100 no-print select-none">
+        {/* Top Header Bar (Clean title & close button - no export buttons above the preview) */}
+        <div className="p-4 border-b border-neutral-800 flex items-center justify-between bg-neutral-900 text-neutral-100 no-print select-none shrink-0">
           <div className="flex items-center gap-2.5">
             <FileCheck className="text-amber-400" size={18} />
             <div>
@@ -646,40 +407,22 @@ export function LabReportModal({
                 Export Student Code (Print / PDF)
               </h2>
               <p className="text-xs text-neutral-400">
-                Simple student code sheet with academic details and source code
+                Configure details below and preview your document before exporting
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => handleTriggerExport('download-pdf')}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-neutral-950 font-bold text-xs rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 shadow-md"
-            >
-              <Download size={14} />
-              <span>Download PDF (.pdf)</span>
-            </button>
-
-            <button
-              onClick={() => handleTriggerExport('browser-print')}
-              className="px-3.5 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 font-semibold text-xs rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
-            >
-              <Printer size={14} />
-              <span>Print</span>
-            </button>
-
-            <button
-              onClick={onClose}
-              className="p-2 text-neutral-400 hover:text-white rounded-lg hover:bg-neutral-800 transition-colors cursor-pointer"
-              aria-label="Close export dialog"
-            >
-              <X size={18} />
-            </button>
-          </div>
+          <button
+            onClick={onClose}
+            className="p-2 text-neutral-400 hover:text-white rounded-lg hover:bg-neutral-800 transition-colors cursor-pointer"
+            aria-label="Close export dialog"
+          >
+            <X size={18} />
+          </button>
         </div>
 
         {/* Configuration Toolbar (College Selector & Student Meta) - Hidden on print */}
-        <div className="bg-neutral-950 border-b border-neutral-800 p-4 space-y-3.5 no-print text-xs text-neutral-300 overflow-y-auto max-h-56">
+        <div className="bg-neutral-950 border-b border-neutral-800 p-4 sm:p-5 space-y-4 no-print text-xs text-neutral-300 shrink-0">
           {/* Template Selection Radio */}
           <div className="space-y-1.5">
             <label className="font-semibold text-white flex items-center gap-2">
@@ -847,12 +590,23 @@ export function LabReportModal({
           )}
         </div>
 
-        {/* Live A4 Document Preview Container */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-neutral-900/50 flex justify-center">
+        {/* Live A4 Document Preview Container (Positioned clearly BELOW configuration) */}
+        <div className="w-full p-4 sm:p-8 pb-12 bg-[#07090e] flex flex-col items-center justify-start border-b border-neutral-800/80 min-h-[500px] overflow-x-auto">
+          {/* Preview Section Header */}
+          <div className="w-full max-w-[210mm] mb-4 flex items-center justify-between text-xs text-neutral-400 select-none px-1">
+            <span className="font-semibold text-neutral-300 flex items-center gap-1.5">
+              <FileCheck size={14} className="text-amber-400" />
+              <span>Live PDF Document Preview (A4 Sheet Below)</span>
+            </span>
+            <span className="text-[11px] font-mono text-neutral-500">
+              A4 Portrait · 210 × 297 mm
+            </span>
+          </div>
+
           <div 
             id="lab-report-sheet" 
             style={{ backgroundColor: '#ffffff', color: '#000000' }}
-            className="bg-white text-black w-full max-w-[210mm] p-6 sm:p-9 shadow-2xl print-sheet font-sans text-xs leading-normal rounded-xs"
+            className="bg-white text-black w-full max-w-[210mm] p-6 sm:p-10 shadow-[0_10px_35px_rgba(0,0,0,0.6)] border border-neutral-300 print-sheet font-sans text-xs leading-normal rounded-xs mb-8"
           >
             
             {/* Header 1: DYPCET (D. Y. PATIL COLLEGE OF ENGINEERING & TECHNOLOGY) */}
@@ -1019,50 +773,55 @@ export function LabReportModal({
           </div>
         </div>
 
-        {/* Modal Bottom Actions (Hidden on print) */}
-        <div className="p-3.5 bg-neutral-950 border-t border-neutral-800 flex flex-wrap items-center justify-between gap-3 text-xs text-neutral-400 no-print">
+        {/* Modal Bottom Actions (Positioned strictly BELOW the PDF preview in natural block flow) */}
+        <div className="w-full p-4 sm:p-6 bg-[#0a0c10] border-t-2 border-neutral-800 flex flex-wrap items-center justify-between gap-4 text-xs text-neutral-300 no-print">
           <div className="flex items-center gap-3">
-            <label className="flex items-center gap-1.5 cursor-pointer text-neutral-300">
+            <label className="flex items-center gap-2 cursor-pointer text-neutral-200 font-medium select-none">
               <input
                 type="checkbox"
                 checked={includeOutput}
                 onChange={(e) => setIncludeOutput(e.target.checked)}
-                className="accent-amber-400 rounded"
+                className="accent-amber-400 rounded w-4 h-4 cursor-pointer"
               />
               <span>Include Execution Output</span>
             </label>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2.5">
             <button
+              type="button"
               onClick={onClose}
-              className="px-3.5 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-lg text-xs font-medium cursor-pointer"
+              className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-600 text-neutral-300 rounded-lg text-xs font-medium cursor-pointer transition-colors"
             >
               Close
             </button>
             <button
+              type="button"
               onClick={() => handleTriggerExport('download-html')}
-              className="px-3 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 rounded-lg text-xs font-medium flex items-center gap-1.5 cursor-pointer"
+              className="px-3.5 py-2 bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-600 text-neutral-200 rounded-lg text-xs font-medium flex items-center gap-1.5 cursor-pointer transition-colors"
               title="Download standalone HTML code sheet"
             >
               <FileCode size={14} className="text-purple-400" />
               <span>HTML</span>
             </button>
             <button
+              type="button"
               onClick={() => handleTriggerExport('browser-print')}
-              className="px-3 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+              className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-600 text-neutral-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
               title="Open browser print dialog"
             >
               <Printer size={14} />
               <span>Print</span>
             </button>
             <button
+              type="button"
               onClick={() => handleTriggerExport('download-pdf')}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-neutral-950 font-bold rounded-lg text-xs flex items-center gap-1.5 cursor-pointer shadow-md"
-              title="Generate and download actual .pdf file"
+              disabled={isGeneratingPdf}
+              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-50 text-neutral-950 font-bold rounded-lg text-xs flex items-center gap-2 cursor-pointer shadow-lg shadow-emerald-950/40 transition-colors"
+              title="Generate and download crisp A4 PDF file"
             >
               <Download size={15} />
-              <span>Download PDF (.pdf)</span>
+              <span>{isGeneratingPdf ? 'Generating PDF...' : 'Download PDF (.pdf)'}</span>
             </button>
           </div>
         </div>
