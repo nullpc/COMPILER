@@ -19,8 +19,7 @@ import {
   ArrowRight,
   Layers,
   Copy,
-  Check,
-  Edit3
+  Check
 } from 'lucide-react';
 import { SAMPLE_PROGRAMS } from '../data/samplePrograms';
 import { SampleProgram } from '../types/compiler';
@@ -31,16 +30,14 @@ interface CompilerPortalPageProps {
   onOpenSavedCodes: () => void;
   compilerName?: string;
   compilerSubtitle?: string;
-  onOpenRenameModal?: () => void;
 }
 
 export function CompilerPortalPage({
   onLaunchCompiler,
   onOpenLabReport,
   onOpenSavedCodes,
-  compilerName = 'Online C & Turbo C++ Compiler',
-  compilerSubtitle = 'Designed for DYCET and All Students From other Colleges',
-  onOpenRenameModal
+  compilerName = 'CForge',
+  compilerSubtitle = 'Developed by Maaz Patwekar'
 }: CompilerPortalPageProps) {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'features' | 'practicals' | 'guide' | 'viva'>('features');
@@ -81,52 +78,25 @@ int main() {
     <div className="min-h-screen bg-[#07090e] text-neutral-100 flex flex-col font-sans selection:bg-blue-600 selection:text-white">
       {/* Top Banner - College & Creator Tribute */}
       <div className="bg-gradient-to-r from-blue-950 via-neutral-900 to-indigo-950 border-b border-blue-900/40 text-xs py-2 px-4 text-center">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-center gap-2 text-neutral-300">
-          <div 
-            onClick={onOpenRenameModal}
-            className="font-semibold text-white flex items-center gap-1.5 cursor-pointer hover:text-blue-300 transition-colors"
-            title="Click to rename compiler"
-          >
-            <span>{compilerName}</span>
-            {onOpenRenameModal && <Edit3 size={12} className="text-amber-400" />}
-          </div>
+        <div className="max-w-[1580px] mx-auto flex flex-wrap items-center justify-center gap-2 text-neutral-300">
+          <span className="font-semibold text-white tracking-wide">{compilerName}</span>
           <span className="text-neutral-500">•</span>
           <span>Developed by <strong className="text-amber-400">Maaz Patwekar</strong></span>
           <span className="text-neutral-500">•</span>
-          <span className="text-blue-300 font-medium">
-            {compilerSubtitle}
-          </span>
-          <span className="hidden sm:inline bg-amber-500/10 text-amber-300 border border-amber-500/30 text-[10px] px-2 py-0.5 rounded-full font-mono ml-1">
-            CForge v3.2
-          </span>
+          <span className="text-blue-300 font-medium">Online C &amp; Turbo C++ IDE</span>
         </div>
       </div>
 
       {/* Main Navbar */}
       <header className="sticky top-0 z-40 bg-[#090b10]/95 backdrop-blur-md border-b border-neutral-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+        <div className="max-w-[1580px] mx-auto px-4 sm:px-6 xl:px-10 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 via-orange-600 to-rose-600 border border-amber-400/50 flex items-center justify-center text-white font-mono font-black text-base shadow-lg shadow-orange-950/40 tracking-wider">
               CF
             </div>
             <div>
-              <div className="font-bold text-base sm:text-lg text-white tracking-tight flex items-center gap-2">
-                <span 
-                  onClick={onOpenRenameModal}
-                  className="cursor-pointer hover:text-amber-300 transition-colors"
-                  title="Click to rename compiler"
-                >
-                  {compilerName}
-                </span>
-                {onOpenRenameModal && (
-                  <button
-                    onClick={onOpenRenameModal}
-                    className="p-1 text-neutral-400 hover:text-white hover:bg-neutral-800 rounded transition-colors cursor-pointer"
-                    title="Change Compiler Name"
-                  >
-                    <Edit3 size={13} className="text-amber-400" />
-                  </button>
-                )}
+              <div className="font-bold text-base sm:text-lg text-white tracking-tight">
+                {compilerName}
               </div>
               <div className="text-[11px] text-neutral-400 truncate max-w-[240px] sm:max-w-none">
                 {compilerSubtitle}
@@ -198,7 +168,7 @@ int main() {
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[350px] bg-blue-600/10 blur-[140px] rounded-full pointer-events-none" />
         <div className="absolute top-1/2 right-10 w-[300px] h-[300px] bg-emerald-500/5 blur-[120px] rounded-full pointer-events-none" />
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
+        <div className="max-w-[1580px] mx-auto px-4 sm:px-6 xl:px-10 relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
             
             {/* Left Column: Value Proposition & Intro */}
@@ -217,7 +187,7 @@ int main() {
 
               <p className="text-neutral-300 text-sm sm:text-base leading-relaxed">
                 No DOSBox installation. No mounting C:\TURBOC3. No missing linker errors. 
-                Full support for authentic 16-bit engineering lab functions like <code className="text-amber-300 bg-neutral-900 px-1 py-0.5 rounded font-mono text-xs">clrscr()</code>, <code className="text-amber-300 bg-neutral-900 px-1 py-0.5 rounded font-mono text-xs">getch()</code>, 
+                Full support for authentic 16-bit programming and lab functions like <code className="text-amber-300 bg-neutral-900 px-1 py-0.5 rounded font-mono text-xs">clrscr()</code>, <code className="text-amber-300 bg-neutral-900 px-1 py-0.5 rounded font-mono text-xs">getch()</code>, 
                 2D Arrays, and BGI Turbo Graphics.
               </p>
 
@@ -234,16 +204,6 @@ int main() {
                     </div>
                   </div>
                 </div>
-                {onOpenRenameModal && (
-                  <button
-                    onClick={onOpenRenameModal}
-                    className="px-2.5 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white rounded-lg text-xs font-medium flex items-center gap-1.5 shrink-0 transition-colors cursor-pointer"
-                    title="Change compiler branding"
-                  >
-                    <Edit3 size={13} className="text-amber-400" />
-                    <span>Change Name</span>
-                  </button>
-                )}
               </div>
 
               {/* Action Buttons */}
@@ -362,7 +322,7 @@ int main() {
       </section>
 
       {/* Interactive Tabs Section */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-12 flex-1 w-full space-y-12">
+      <section className="max-w-[1580px] mx-auto px-4 sm:px-6 xl:px-10 py-12 flex-1 w-full space-y-12">
         
         {/* Navigation Tabs Bar */}
         <div className="flex border-b border-neutral-800 overflow-x-auto gap-4 text-sm font-semibold">
@@ -412,10 +372,10 @@ int main() {
           <div className="space-y-10 animate-in fade-in">
             <div className="text-center max-w-2xl mx-auto space-y-2">
               <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
-                Engineered for Engineering & Polytechnic Students
+                Engineered for All Students &amp; Coders
               </h2>
               <p className="text-neutral-400 text-xs sm:text-sm">
-                Every feature was built to make practical lab submissions effortless, whether you are at DYPCET or any college.
+                Every feature was built to make practical C and C++ programming effortless for all students, beginners, and colleges.
               </p>
             </div>
 
@@ -712,8 +672,8 @@ int main() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-neutral-800 bg-[#06080d] text-neutral-400 py-10 px-4 sm:px-6 text-xs">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
+      <footer className="border-t border-neutral-800 bg-[#06080d] text-neutral-400 py-10 px-4 sm:px-6 xl:px-10 text-xs">
+        <div className="max-w-[1580px] mx-auto flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
           <div className="space-y-1">
             <div className="font-bold text-white text-sm">
               Online Turbo C++ Compiler & Lab Assistant

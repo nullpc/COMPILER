@@ -9,7 +9,6 @@ import { ExamplesModal } from './components/ExamplesModal';
 import { ShortcutsGuideModal } from './components/ShortcutsGuideModal';
 import { LabReportModal } from './components/LabReportModal';
 import { CompilerPortalPage } from './components/CompilerPortalPage';
-import { RenameCompilerModal } from './components/RenameCompilerModal';
 import { storageService, DEFAULT_PROGRAM } from './services/storageService';
 import { CInterpreter } from './engine/cInterpreter';
 import { SavedProgram, CompilerTheme, ExecutionResult, SampleProgram } from './types/compiler';
@@ -19,22 +18,9 @@ export default function App() {
   // Navigation view: 'portal' (engaging landing & guide page) or 'compiler' (IDE workspace)
   const [currentView, setCurrentView] = useState<'portal' | 'compiler'>('portal');
 
-  // Configurable Compiler Branding State (CForge Developed by Maaz Patwekar)
-  const [compilerName, setCompilerName] = useState<string>(() => {
-    const saved = localStorage.getItem('turboc_compiler_name');
-    if (!saved || saved === 'Online C & Turbo C++ Compiler' || saved === 'Online Turbo C++ Compiler') {
-      return 'CForge';
-    }
-    return saved;
-  });
-  const [compilerSubtitle, setCompilerSubtitle] = useState<string>(() => {
-    const saved = localStorage.getItem('turboc_compiler_subtitle');
-    if (!saved || saved === 'Designed for DYCET and All Students From other Colleges') {
-      return 'Developed by Maaz Patwekar';
-    }
-    return saved;
-  });
-  const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
+  // Fixed Compiler Branding (CForge Developed by Maaz Patwekar)
+  const compilerName = 'CForge';
+  const compilerSubtitle = 'Developed by Maaz Patwekar';
 
   // Load saved files from storage
   const [savedPrograms, setSavedPrograms] = useState<SavedProgram[]>(() => {
@@ -81,24 +67,10 @@ export default function App() {
     setTimeout(() => setToastMsg(null), 2500);
   };
 
-  // Sync browser document title with compilerName
+  // Sync browser document title with CForge
   useEffect(() => {
-    document.title = `${compilerName} | DYPCET`;
-  }, [compilerName]);
-
-  const handleSaveCompilerBranding = (newName: string, newSubtitle?: string) => {
-    setCompilerName(newName);
-    try {
-      localStorage.setItem('turboc_compiler_name', newName);
-    } catch {}
-    if (newSubtitle) {
-      setCompilerSubtitle(newSubtitle);
-      try {
-        localStorage.setItem('turboc_compiler_subtitle', newSubtitle);
-      } catch {}
-    }
-    showToast(`Compiler updated to: ${newName}`, 'success');
-  };
+    document.title = 'CForge - Online C & Turbo C++ IDE | Developed by Maaz Patwekar';
+  }, []);
 
   // Auto-save draft on every code change
   useEffect(() => {
@@ -427,7 +399,6 @@ export default function App() {
         <CompilerPortalPage
           compilerName={compilerName}
           compilerSubtitle={compilerSubtitle}
-          onOpenRenameModal={() => setIsRenameModalOpen(true)}
           onLaunchCompiler={(sample) => {
             if (sample) {
               handleSelectSample(sample);
@@ -447,7 +418,6 @@ export default function App() {
             theme={theme}
             compilerName={compilerName}
             compilerSubtitle={compilerSubtitle}
-            onOpenRenameModal={() => setIsRenameModalOpen(true)}
             onThemeChange={setTheme}
             onRun={handleRun}
             onCompile={handleCompile}
@@ -488,7 +458,7 @@ export default function App() {
           </div>
 
           {/* Main Workspace (Split Pane on desktop, Tabbed on mobile) */}
-          <main className="flex-1 max-w-7xl w-full mx-auto p-2 sm:p-4 grid grid-cols-1 md:grid-cols-12 gap-3 min-h-[480px] h-[calc(100vh-140px)] md:h-[calc(100vh-120px)]">
+          <main className="flex-1 max-w-[1580px] w-full mx-auto p-2 sm:p-4 grid grid-cols-1 md:grid-cols-12 gap-3 min-h-[480px] h-[calc(100vh-140px)] md:h-[calc(100vh-120px)]">
             {/* Left Column: Code Editor (7 cols) */}
             <div className={`md:col-span-7 h-full ${mobileTab === 'editor' ? 'block' : 'hidden md:block'}`}>
               <CodeEditor
@@ -577,15 +547,6 @@ export default function App() {
         code={code}
         filename={filename}
         outputLogs={executionResult ? executionResult.logs.filter(l => l.type === 'stdout').map(l => l.text) : []}
-      />
-
-      {/* Rename Compiler / Custom Branding Modal */}
-      <RenameCompilerModal
-        isOpen={isRenameModalOpen}
-        onClose={() => setIsRenameModalOpen(false)}
-        currentName={compilerName}
-        currentSubtitle={compilerSubtitle}
-        onSave={handleSaveCompilerBranding}
       />
 
       {/* Floating Toast Notification */}

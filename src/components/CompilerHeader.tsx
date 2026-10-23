@@ -13,7 +13,6 @@ import {
   Printer,
   Home,
   ArrowLeft,
-  Edit3,
   FilePlus
 } from 'lucide-react';
 import { CompilerTheme } from '../types/compiler';
@@ -38,7 +37,6 @@ interface CompilerHeaderProps {
   onDownload: () => void;
   onImportClick: () => void;
   onBackToPortal?: () => void;
-  onOpenRenameModal?: () => void;
 }
 
 export function CompilerHeader({
@@ -46,8 +44,8 @@ export function CompilerHeader({
   isModified,
   savedCount,
   theme,
-  compilerName = 'Online C & Turbo C++ Compiler',
-  compilerSubtitle = 'Designed for DYCET and All Students From other Colleges',
+  compilerName = 'CForge',
+  compilerSubtitle = 'Developed by Maaz Patwekar',
   onThemeChange,
   onRun,
   onCompile,
@@ -60,13 +58,12 @@ export function CompilerHeader({
   onOpenLabReport,
   onDownload,
   onImportClick,
-  onBackToPortal,
-  onOpenRenameModal
+  onBackToPortal
 }: CompilerHeaderProps) {
   return (
     <header className="border-b border-neutral-800 bg-[#090b10] text-neutral-100 select-none">
       {/* Top Identity Row */}
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between gap-2 sm:gap-3">
+      <div className="max-w-[1580px] mx-auto px-3 sm:px-6 py-2 sm:py-2.5 flex items-center justify-between gap-2 sm:gap-3">
         {/* Brand Lockup */}
         <div className="flex items-center gap-2 sm:gap-3">
           {onBackToPortal && (
@@ -85,26 +82,12 @@ export function CompilerHeader({
           </div>
           <div>
             <div className="flex items-center gap-1.5 sm:gap-2">
-              <span 
-                onClick={onOpenRenameModal}
-                className="font-bold text-xs sm:text-base tracking-tight text-white font-sans truncate max-w-[140px] sm:max-w-none cursor-pointer hover:text-blue-300 transition-colors"
-                title="Click to rename compiler"
-              >
+              <span className="font-bold text-xs sm:text-base tracking-tight text-white font-sans truncate max-w-[140px] sm:max-w-none">
                 {compilerName}
               </span>
               <span className="text-[9px] sm:text-[10px] bg-blue-950 text-blue-300 border border-blue-800/80 px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded font-mono font-medium">
                 v3.2
               </span>
-              {onOpenRenameModal && (
-                <button
-                  type="button"
-                  onClick={onOpenRenameModal}
-                  className="p-1 text-neutral-400 hover:text-white hover:bg-neutral-800 rounded transition-colors cursor-pointer"
-                  title="Rename compiler or heading"
-                >
-                  <Edit3 size={13} className="text-amber-400" />
-                </button>
-              )}
             </div>
             <div className="hidden sm:flex text-[11px] text-neutral-400 items-center gap-1.5 font-sans">
               <span className="font-medium text-neutral-300">By Maaz Patwekar</span>
@@ -220,62 +203,64 @@ export function CompilerHeader({
       </div>
 
       {/* Secondary Fast Utility Bar */}
-      <div className="bg-neutral-950 border-t border-neutral-800/80 px-4 py-1.5 text-xs text-neutral-400 flex items-center justify-between overflow-x-auto gap-4">
-        <div className="flex items-center gap-3 shrink-0">
-          {onNewFile && (
-            <>
-              <button
-                onClick={onNewFile}
-                className="hover:text-amber-300 text-amber-400 font-medium transition-colors flex items-center gap-1 cursor-pointer"
-                title="Create a new file with default Hello World in C"
-              >
-                <FilePlus size={12} className="text-amber-400" />
-                <span>New (main.c)</span>
-              </button>
-              <span>·</span>
-            </>
-          )}
-          <button
-            onClick={onOpenExamples}
-            className="hover:text-white transition-colors flex items-center gap-1 cursor-pointer"
-          >
-            <BookOpen size={12} className="text-blue-400" />
-            <span>Syllabus Examples</span>
-          </button>
-          <span>·</span>
-          <button
-            onClick={onOpenPasteModal}
-            className="hover:text-white transition-colors flex items-center gap-1 cursor-pointer"
-          >
-            <FileCode size={12} className="text-purple-400" />
-            <span>Paste / Insert Code</span>
-          </button>
-          <span>·</span>
-          <button
-            onClick={onImportClick}
-            className="hover:text-white transition-colors flex items-center gap-1 cursor-pointer"
-          >
-            <Upload size={12} className="text-emerald-400" />
-            <span>Import .C / .CPP</span>
-          </button>
-          <span>·</span>
-          <button
-            onClick={onDownload}
-            className="hover:text-white transition-colors flex items-center gap-1 cursor-pointer"
-          >
-            <Download size={12} className="text-sky-400" />
-            <span>Download File</span>
-          </button>
-        </div>
+      <div className="bg-neutral-950 border-t border-neutral-800/80 px-3 sm:px-6 py-1.5 text-xs text-neutral-400">
+        <div className="max-w-[1580px] mx-auto flex items-center justify-between overflow-x-auto gap-4">
+          <div className="flex items-center gap-3 shrink-0">
+            {onNewFile && (
+              <>
+                <button
+                  onClick={onNewFile}
+                  className="hover:text-amber-300 text-amber-400 font-medium transition-colors flex items-center gap-1 cursor-pointer"
+                  title="Create a new file with default Hello World in C"
+                >
+                  <FilePlus size={12} className="text-amber-400" />
+                  <span>New (main.c)</span>
+                </button>
+                <span>·</span>
+              </>
+            )}
+            <button
+              onClick={onOpenExamples}
+              className="hover:text-white transition-colors flex items-center gap-1 cursor-pointer"
+            >
+              <BookOpen size={12} className="text-blue-400" />
+              <span>Syllabus Examples</span>
+            </button>
+            <span>·</span>
+            <button
+              onClick={onOpenPasteModal}
+              className="hover:text-white transition-colors flex items-center gap-1 cursor-pointer"
+            >
+              <FileCode size={12} className="text-purple-400" />
+              <span>Paste / Insert Code</span>
+            </button>
+            <span>·</span>
+            <button
+              onClick={onImportClick}
+              className="hover:text-white transition-colors flex items-center gap-1 cursor-pointer"
+            >
+              <Upload size={12} className="text-emerald-400" />
+              <span>Import .C / .CPP</span>
+            </button>
+            <span>·</span>
+            <button
+              onClick={onDownload}
+              className="hover:text-white transition-colors flex items-center gap-1 cursor-pointer"
+            >
+              <Download size={12} className="text-sky-400" />
+              <span>Download File</span>
+            </button>
+          </div>
 
-        <div className="flex items-center gap-3 shrink-0">
-          <button
-            onClick={onOpenShortcuts}
-            className="hover:text-white transition-colors flex items-center gap-1 cursor-pointer text-neutral-400 font-mono text-[11px]"
-          >
-            <HelpCircle size={12} />
-            <span>Shortcuts & Help</span>
-          </button>
+          <div className="flex items-center gap-3 shrink-0">
+            <button
+              onClick={onOpenShortcuts}
+              className="hover:text-white transition-colors flex items-center gap-1 cursor-pointer text-neutral-400 font-mono text-[11px]"
+            >
+              <HelpCircle size={12} />
+              <span>Shortcuts & Help</span>
+            </button>
+          </div>
         </div>
       </div>
     </header>
