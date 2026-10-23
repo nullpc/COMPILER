@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://maazpatwekar.github.io/cforge/sitemap.xml
